@@ -138,11 +138,15 @@ export function setsOn(sets: WorkoutSet[], day: string): WorkoutSet[] {
   return sets.filter((s) => s.day === day);
 }
 
-export function dayVolume(sets: WorkoutSet[]): number {
-  return sets.reduce((a, s) => {
-    if (s.kind !== "strength") return a;
-    return a + (s.weightKg || 0) * (s.reps || 0);
-  }, 0);
+/** 自重種目は重量未入力なので、その日の体重を mill 負荷にする。 */
+export function setLoadKg(set: WorkoutSet, bodyKg: number): number {
+  if (set.kind !== "strength") return 0;
+  if (set.weightKg && set.weightKg > 0) return set.weightKg;
+  return (set.reps ?? 0) > 0 ? bodyKg : 0;
+}
+
+export function dayVolume(sets: WorkoutSet[], bodyKg = 0): number {
+  return sets.reduce((a, s) => a + setLoadKg(s, bodyKg) * (s.reps || 0), 0);
 }
 
 export function lastSession(sets: WorkoutSet[], exerciseId: string, beforeDay: string): WorkoutSet[] {

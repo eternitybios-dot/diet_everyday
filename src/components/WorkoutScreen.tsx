@@ -1,6 +1,13 @@
 import { MUSCLE_LABEL, MUSCLE_ORDER, STARTER_GYM, STARTER_HOME } from "../data/exercises";
-import { lastSession, sessionCleared, workingWeight, dayVolume, setsOn } from "../lib/calc";
-import { buzz, formatKg, weekday, weekIds } from "../lib/format";
+import {
+  lastSession,
+  sessionCleared,
+  workingWeight,
+  dayVolume,
+  setsOn,
+  weightOnOrBefore,
+} from "../lib/calc";
+import { buzz, formatKg, formatNum, weekday, weekIds } from "../lib/format";
 import {
   allExercises,
   lastSetFor,
@@ -56,7 +63,19 @@ export function WorkoutScreen({
   const catalog = useMemo(() => allExercises(data), [data]);
   const recents = recentExerciseIds(data, place);
   const starters = place === "gym" ? STARTER_GYM : STARTER_HOME;
-  const week = weekIds(day);
+  const weekBars = useMemo(
+    () =>
+      weekIds(day).map((id) => ({
+        label: weekday(id),
+        value: dayVolume(
+          setsOn(data.sets, id),
+          weightOnOrBefore(data.weights, id, data.profile.weightKg),
+        ),
+        mark: id === day,
+      })),
+    [data.sets, data.weights, data.profile.weightKg, day],
+  );
+  const weekVol = weekBars.reduce((a, b) => a + b.value, 0);
 
   useEffect(() => {
     if (!resumeId) return;
@@ -147,15 +166,9 @@ export function WorkoutScreen({
 
       <div className="section-h">
         <span>今週の負荷</span>
-        <span>kg × 回</span>
+        <span>{formatNum(weekVol)} kg · 自重は体重</span>
       </div>
-      <WeekBars
-        bars={week.map((id) => ({
-          label: weekday(id),
-          value: dayVolume(setsOn(data.sets, id)),
-          mark: id === day,
-        }))}
-      />
+      <WeekBars bars={weekBars} />
 
       <div className="chips">
         <button className={`chip ${filter === "recent" ? "on" : ""}`} onClick={() => setFilter("recent")}>
