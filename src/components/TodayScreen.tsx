@@ -380,6 +380,9 @@ function Settings({
         <p className="empty" style={{ paddingTop: 0 }}>
           目安 {formatNum(s.targetKcal)}kcal · F{s.targetFat}g · C{s.targetCarb}g。減量グラムは食事記録がある日の収支だけ積む。
         </p>
+        <p className="empty" style={{ paddingTop: 0 }}>
+          スマホでは共有ボタンから「ホーム画面に追加」すると、ジムでもアプリのように開けます。記録はこの端末のブラウザに保存されます。
+        </p>
         <button className="copy-btn" style={{ width: "100%", height: 44, marginBottom: 10 }} onClick={() => exportJson(data)}>
           データを書き出す
         </button>
