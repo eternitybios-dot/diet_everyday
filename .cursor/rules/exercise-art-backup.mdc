@@ -1,0 +1,13 @@
+---
+description: Always snapshot public/ex before replacing exercise art
+alwaysApply: true
+---
+
+# Exercise art backups
+
+Before adding, replacing, or regenerating any file in `public/ex/`:
+
+1. Run `npm run backup:ex` (creates `backups/ex/<timestamp>/` and updates `backups/ex/latest`).
+2. Never overwrite `public/ex/*.jpg` in place without that snapshot first.
+3. Keep `backups/` gitignored. Restore locally with `npm run restore:ex` (or `npm run restore:ex -- 20260829-070000`). Git history of `public/ex/` is the remote revert path.
+4. After replacing art, bump the `?v=` cache-bust query in `src/components/ExercisePic.tsx`.

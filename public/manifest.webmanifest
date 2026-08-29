@@ -1,0 +1,9 @@
+{
+  "name": "トレ飯",
+  "short_name": "トレ飯",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#10120e",
+  "theme_color": "#10120e",
+  "lang": "ja"
+}
