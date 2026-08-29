@@ -138,7 +138,7 @@ export function setsOn(sets: WorkoutSet[], day: string): WorkoutSet[] {
   return sets.filter((s) => s.day === day);
 }
 
-/** 自重種目は重量未入力なので、その日の体重を mill 負荷にする。 */
+/** 自重種目は重量が空なので、その日の体重 × 回数で負荷を積む。 */
 export function setLoadKg(set: WorkoutSet, bodyKg: number): number {
   if (set.kind !== "strength") return 0;
   if (set.weightKg && set.weightKg > 0) return set.weightKg;
