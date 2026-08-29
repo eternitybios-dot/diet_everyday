@@ -1,4 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#10120e"/>
-  <text x="16" y="22" text-anchor="middle" font-size="16" font-family="sans-serif" font-weight="700" fill="#c6ef3a">T</text>
+  <rect width="32" height="32" rx="8" fill="#c6ef3a"/>
+  <g fill="#10120e">
+    <rect x="11" y="14.25" width="10" height="3.5" rx="0.6"/>
+    <rect x="7.2" y="9.2" width="3.4" height="13.6" rx="1.1"/>
+    <rect x="4.6" y="11" width="2.7" height="10" rx="0.9"/>
+    <rect x="21.4" y="9.2" width="3.4" height="13.6" rx="1.1"/>
+    <rect x="24.7" y="11" width="2.7" height="10" rx="0.9"/>
+  </g>
 </svg>

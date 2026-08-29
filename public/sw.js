@@ -1,4 +1,4 @@
-const CACHE = "tremeshi-v1";
+const CACHE = "tremeshi-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
