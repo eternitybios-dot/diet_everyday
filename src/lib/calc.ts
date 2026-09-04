@@ -113,25 +113,42 @@ export function scaleLossGrams(avgKg: number, startKg: number): number {
  * 記録のある日だけ TDEE − 摂取 を積む。未記録日は0食扱いしない（過大な減量になる）。
  * 有酸素kcalはTDEEに含めない（活動係数と二重計上になるため）。
  */
-export function calorieBalanceByDay(
-  data: AppData,
-  days: string[],
-): { day: string; deficitKcal: number; eaten: number; logged: boolean; grams: number }[] {
+/** 摂取が目標の半分未満の日は「夜を記録し忘れた」可能性が高いので、累計から外す。 */
+export const THIN_RATIO = 0.5;
+
+export type BalancePoint = {
+  day: string;
+  deficitKcal: number;
+  eaten: number;
+  logged: boolean;
+  /** 記録はあるが薄すぎて信用できない日 */
+  thin: boolean;
+  grams: number;
+};
+
+export function calorieBalanceByDay(data: AppData, days: string[]): BalancePoint[] {
+  const today = dayId();
   return days.map((day) => {
     const eaten = intakeOn(data.meals, day).kcal;
     const logged = eaten > 0 || data.meals.some((m) => m.day === day);
     if (!logged) {
-      return { day, deficitKcal: 0, eaten: 0, logged: false, grams: 0 };
+      return { day, deficitKcal: 0, eaten: 0, logged: false, thin: false, grams: 0 };
     }
     const kg = weightOnOrBefore(data.weights, day, data.profile.weightKg);
     const tdee = tdeeOf({ ...data.profile, weightKg: kg });
     const deficitKcal = tdee - eaten;
-    return { day, deficitKcal, eaten, logged: true, grams: kcalToGrams(deficitKcal) };
+    // きょうはまだ食べ終わっていないので薄い判定をしない
+    const thin = day !== today && eaten < data.profile.targetKcal * THIN_RATIO;
+    return { day, deficitKcal, eaten, logged: true, thin, grams: kcalToGrams(deficitKcal) };
   });
 }
 
-export function cumulativeGrams(points: { grams: number; logged: boolean }[]): number {
-  return points.reduce((a, p) => a + (p.logged ? p.grams : 0), 0);
+export function cumulativeGrams(points: BalancePoint[]): number {
+  return points.reduce((a, p) => a + (p.logged && !p.thin ? p.grams : 0), 0);
+}
+
+export function thinDays(points: BalancePoint[]): number {
+  return points.filter((p) => p.thin).length;
 }
 
 export function setsOn(sets: WorkoutSet[], day: string): WorkoutSet[] {
@@ -169,6 +186,79 @@ export function sessionCleared(session: WorkoutSet[], targetReps: number): boole
   const work = session.filter((s) => s.kind === "strength");
   if (work.length < 2) return false;
   return work.every((s) => (s.reps ?? 0) >= targetReps);
+}
+
+/** 自重は回数で伸ばす。前回の最小回数 +2 を次の目標にする。 */
+export function nextBodyweightReps(session: WorkoutSet[]): number | undefined {
+  const reps = session.filter((s) => s.kind === "strength").map((s) => s.reps ?? 0);
+  if (reps.length < 2) return undefined;
+  return Math.min(...reps) + 2;
+}
+
+export function weekStats(
+  sets: WorkoutSet[],
+  days: string[],
+): { days: number; sets: number } {
+  const inWeek = sets.filter((s) => days.includes(s.day));
+  return { days: new Set(inWeek.map((s) => s.day)).size, sets: inWeek.length };
+}
+
+const LONG_REST_IDS = new Set([
+  "g-squat",
+  "g-smith-squat",
+  "g-deadlift",
+  "g-rdl",
+  "g-leg-press",
+  "g-hip-thrust",
+  "g-smith-bench",
+]);
+
+/** 種目に合う休憩秒。重い複合種目は長め、自重・体幹は短め。 */
+export function defaultRestSec(ex: Exercise): number {
+  if (ex.restSec) return ex.restSec;
+  if (ex.kind !== "strength") return 45;
+  if (LONG_REST_IDS.has(ex.id)) return 120;
+  if (ex.increment === 0 || ex.muscle === "core") return 60;
+  return 90;
+}
+
+export function cardioKcal(ex: Exercise, minutes: number): number {
+  return Math.round(minutes * (ex.kcalPerMin ?? 8));
+}
+
+export type WeekSummary = {
+  trainDays: number;
+  sets: number;
+  loadKg: number;
+  avgKcal: number | null;
+  avgProtein: number | null;
+  loggedDays: number;
+  avgWeight: number | null;
+};
+
+export function weekSummary(data: AppData, days: string[]): WeekSummary {
+  const stats = weekStats(data.sets, days);
+  const loadKg = days.reduce(
+    (a, id) =>
+      a + dayVolume(setsOn(data.sets, id), weightOnOrBefore(data.weights, id, data.profile.weightKg)),
+    0,
+  );
+  const logged = days
+    .map((d) => intakeOn(data.meals, d))
+    .filter((x, i) => x.kcal > 0 || data.meals.some((m) => m.day === days[i]));
+  const avgKcal = logged.length ? logged.reduce((a, x) => a + x.kcal, 0) / logged.length : null;
+  const avgProtein = logged.length
+    ? logged.reduce((a, x) => a + x.protein, 0) / logged.length
+    : null;
+  return {
+    trainDays: stats.days,
+    sets: stats.sets,
+    loadKg,
+    avgKcal,
+    avgProtein,
+    loggedDays: logged.length,
+    avgWeight: avgWeight(data.weights, days),
+  };
 }
 
 export function weekMuscleCover(

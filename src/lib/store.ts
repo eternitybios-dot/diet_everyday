@@ -38,9 +38,16 @@ function migrateMeal(m: MealLog): MealLog {
   return { ...m, fat, carb, qty: m.qty || 1 };
 }
 
+/** 生年が入っていれば年齢は毎年自動で進む。誕生日不明なので年差のみ。 */
+export function ageFrom(birthYear: number | undefined, fallback: number): number {
+  if (!birthYear) return fallback;
+  return Math.max(10, new Date().getFullYear() - birthYear);
+}
+
 function migrate(raw: Partial<AppData>): AppData {
   const base = empty();
   const profile = { ...DEFAULT_PROFILE, ...raw.profile };
+  profile.age = ageFrom(profile.birthYear, profile.age);
   const suggested = suggestTargets(profile);
   return {
     ...base,
@@ -53,8 +60,11 @@ function migrate(raw: Partial<AppData>): AppData {
       targetFat: profile.targetFat ?? suggested.targetFat,
       targetCarb: profile.targetCarb ?? suggested.targetCarb,
     },
-    meals: (raw.meals ?? []).map(migrateMeal),
-    customFoods: (raw.customFoods ?? []).map((f) => ({
+    sets: Array.isArray(raw.sets) ? raw.sets : [],
+    weights: Array.isArray(raw.weights) && raw.weights.length ? raw.weights : base.weights,
+    customExercises: Array.isArray(raw.customExercises) ? raw.customExercises : [],
+    meals: (Array.isArray(raw.meals) ? raw.meals : []).map(migrateMeal),
+    customFoods: (Array.isArray(raw.customFoods) ? raw.customFoods : []).map((f) => ({
       ...f,
       ...("fat" in f && f.fat != null ? {} : macrosFromEnergy(f.kcal, f.protein)),
     })),
@@ -83,6 +93,27 @@ export function exportJson(data: AppData): void {
   a.download = `tremeshi-${dayId()}.json`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/** 書き出した JSON を読み戻す。形が違えば例外。 */
+export async function parseImport(file: File): Promise<AppData> {
+  const text = await file.text();
+  const raw = JSON.parse(text) as Partial<AppData>;
+  if (!raw || typeof raw !== "object" || !raw.profile || !Array.isArray(raw.sets)) {
+    throw new Error("トレ飯の書き出しファイルではない");
+  }
+  return migrate(raw);
+}
+
+export function recordCount(data: AppData): number {
+  return data.sets.length + data.meals.length + data.weights.length;
+}
+
+/** バックアップが古い（または一度もない）のに記録が溜まっているか。 */
+export function backupStale(data: AppData, now = Date.now()): boolean {
+  if (recordCount(data) < 20) return false;
+  const last = data.lastExportAt ?? 0;
+  return now - last > 14 * 24 * 60 * 60 * 1000;
 }
 
 export function allExercises(data: AppData): Exercise[] {

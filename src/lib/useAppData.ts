@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AppData, Exercise, Food, MealLog, Place, Profile, WorkoutSet } from "../types";
 import { suggestTargets } from "./calc";
 import { uid } from "./format";
-import { loadData, saveData } from "./store";
+import { ageFrom, loadData, saveData } from "./store";
 
 export function useAppData() {
   const [data, setData] = useState<AppData>(() => loadData());
@@ -103,7 +103,15 @@ export function useAppData() {
   const updateProfile = useCallback((p: Partial<Profile>) => {
     setData((d) => {
       const profile = { ...d.profile, ...p };
-      if (p.goal != null || p.activity != null || p.weightKg != null) {
+      if (p.birthYear != null) profile.age = ageFrom(p.birthYear, profile.age);
+      if (
+        p.goal != null ||
+        p.activity != null ||
+        p.weightKg != null ||
+        p.birthYear != null ||
+        p.sex != null ||
+        p.heightCm != null
+      ) {
         const s = suggestTargets(profile);
         profile.targetKcal = s.targetKcal;
         profile.targetFat = s.targetFat;
@@ -126,8 +134,28 @@ export function useAppData() {
     setData((d) => ({ ...d, lastPlace: place }));
   }, []);
 
+  const removeExercise = useCallback((id: string) => {
+    setData((d) => ({ ...d, customExercises: d.customExercises.filter((e) => e.id !== id) }));
+  }, []);
+
+  const removeFood = useCallback((id: string) => {
+    setData((d) => ({ ...d, customFoods: d.customFoods.filter((f) => f.id !== id) }));
+  }, []);
+
+  const replaceData = useCallback((next: AppData) => {
+    setData(next);
+  }, []);
+
+  const markExported = useCallback(() => {
+    setData((d) => ({ ...d, lastExportAt: Date.now() }));
+  }, []);
+
   return {
     data,
+    removeExercise,
+    removeFood,
+    replaceData,
+    markExported,
     logSet,
     logSets,
     logMeal,

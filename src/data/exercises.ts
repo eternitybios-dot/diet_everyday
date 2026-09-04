@@ -38,7 +38,22 @@ const gym = (
   defaultReps: extra.defaultReps ?? 10,
   defaultMin: extra.defaultMin,
   defaultSec: extra.defaultSec,
+  kcalPerMin: extra.kcalPerMin,
+  restSec: extra.restSec,
 });
+
+/** 自重で回数が伸びたら、次に移る難しい種目。 */
+export const NEXT_STEP: Record<string, string> = {
+  "h-knee-push": "h-pushup",
+  "h-pushup": "h-diamond",
+  "h-bw-squat": "h-split-squat",
+  "h-lunge": "h-split-squat",
+  "h-split-squat": "h-jump-squat",
+  "h-glute-bridge": "h-split-squat",
+  "h-inv-row": "h-pullup",
+  "h-crunch": "h-leg-raise",
+  "h-band-row": "h-inv-row",
+};
 
 /** エニタイムフィットネスでよくあるマシン＋フリー。店舗差はあるが、入力は名前タップだけ。 */
 export const EXERCISES: Exercise[] = [
@@ -118,13 +133,17 @@ export const EXERCISES: Exercise[] = [
     increment: 5,
   }),
 
-  gym("g-treadmill", "トレッドミル", "cardio", { kind: "cardio", defaultMin: 20 }),
-  gym("g-cross", "クロストレーナー", "cardio", { kind: "cardio", defaultMin: 20 }),
-  gym("g-bike", "エアロバイク", "cardio", { kind: "cardio", defaultMin: 15 }),
-  gym("g-recumbent", "リカンベントバイク", "cardio", { kind: "cardio", defaultMin: 15 }),
-  gym("g-row", "ローイング", "cardio", { kind: "cardio", defaultMin: 10 }),
-  gym("g-stair", "ステアクライマー", "cardio", { kind: "cardio", defaultMin: 10 }),
-  gym("g-wattbike", "Wattbike", "cardio", { kind: "cardio", defaultMin: 10 }),
+  gym("g-treadmill", "トレッドミル", "cardio", { kind: "cardio", defaultMin: 20, kcalPerMin: 9 }),
+  gym("g-cross", "クロストレーナー", "cardio", { kind: "cardio", defaultMin: 20, kcalPerMin: 8 }),
+  gym("g-bike", "エアロバイク", "cardio", { kind: "cardio", defaultMin: 15, kcalPerMin: 7 }),
+  gym("g-recumbent", "リカンベントバイク", "cardio", {
+    kind: "cardio",
+    defaultMin: 15,
+    kcalPerMin: 6,
+  }),
+  gym("g-row", "ローイング", "cardio", { kind: "cardio", defaultMin: 10, kcalPerMin: 10 }),
+  gym("g-stair", "ステアクライマー", "cardio", { kind: "cardio", defaultMin: 10, kcalPerMin: 10 }),
+  gym("g-wattbike", "Wattbike", "cardio", { kind: "cardio", defaultMin: 10, kcalPerMin: 10 }),
 
   gym("h-pushup", "腕立て伏せ", "chest", {
     place: "home",
@@ -220,6 +239,7 @@ export const EXERCISES: Exercise[] = [
     place: "home",
     kind: "cardio",
     defaultMin: 5,
+    kcalPerMin: 8,
   }),
   gym("h-wall-sit", "ウォールシット", "legs", {
     place: "home",
