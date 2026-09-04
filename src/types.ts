@@ -16,6 +16,7 @@ export type Goal = "cut" | "maintain" | "bulk";
 
 export type Profile = {
   age: number;
+  birthYear?: number;
   sex: Sex;
   heightCm: number;
   weightKg: number;
@@ -39,6 +40,10 @@ export type Exercise = {
   defaultReps?: number;
   defaultMin?: number;
   defaultSec?: number;
+  /** 有酸素 1分あたりの消費目安。未設定は 8。 */
+  kcalPerMin?: number;
+  /** セット間の休憩秒。未設定は種目から推定。 */
+  restSec?: number;
 };
 
 export type Food = {
@@ -96,6 +101,7 @@ export type AppData = {
   customExercises: Exercise[];
   customFoods: Food[];
   lastPlace: Place;
+  lastExportAt?: number;
 };
 
 export type ToastAction = {

@@ -77,12 +77,32 @@ export function slotLabel(s: MealSlot): string {
   return { breakfast: "朝", lunch: "昼", dinner: "夜", snack: "間食" }[s];
 }
 
-export function buzz(ms = 12): void {
+export function buzz(pattern: number | number[] = 12): void {
   try {
-    navigator.vibrate?.(ms);
+    navigator.vibrate?.(pattern);
   } catch {
     /* ignore */
   }
+}
+
+/** ひらがな→カタカナに寄せて、大文字小文字と空白の差を無視する。 */
+export function normalizeSearch(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/[\u3041-\u3096]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60))
+    .replace(/\s+/g, "");
+}
+
+export function matchSearch(hay: string, needle: string): boolean {
+  return normalizeSearch(hay).includes(normalizeSearch(needle));
+}
+
+export function daysAgoLabel(at: number | undefined, now = Date.now()): string {
+  if (!at) return "まだ一度も";
+  const d = Math.floor((now - at) / 86400000);
+  if (d <= 0) return "きょう";
+  return `${d}日前`;
 }
 
 export function uid(): string {

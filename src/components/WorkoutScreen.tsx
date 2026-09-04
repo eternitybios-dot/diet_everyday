@@ -1,13 +1,23 @@
-import { MUSCLE_LABEL, MUSCLE_ORDER, STARTER_GYM, STARTER_HOME } from "../data/exercises";
 import {
+  MUSCLE_LABEL,
+  MUSCLE_ORDER,
+  NEXT_STEP,
+  STARTER_GYM,
+  STARTER_HOME,
+} from "../data/exercises";
+import {
+  cardioKcal,
+  defaultRestSec,
   lastSession,
+  nextBodyweightReps,
   sessionCleared,
   workingWeight,
   dayVolume,
   setsOn,
+  weekStats,
   weightOnOrBefore,
 } from "../lib/calc";
-import { buzz, formatKg, formatNum, weekday, weekIds } from "../lib/format";
+import { buzz, formatKg, formatNum, matchSearch, weekday, weekIds } from "../lib/format";
 import {
   allExercises,
   lastSetFor,
@@ -15,6 +25,7 @@ import {
   recentExerciseIds,
   uniqueExercisesOnDay,
 } from "../lib/store";
+import type { RestTimer } from "../lib/useRestTimer";
 import type { AppData, Exercise, ExKind, Muscle, Place, WorkoutSet } from "../types";
 import { ExerciseArt } from "./ExercisePic";
 import { WeekBars } from "./Charts";
@@ -32,9 +43,11 @@ type Props = {
   removeSets: (ids: string[]) => void;
   setPlace: (p: Place) => void;
   addExercise: (ex: Exercise) => void;
+  removeExercise: (id: string) => void;
   onToast: (msg: string, undo?: () => void) => void;
   resumeId: string | null;
   onResumed: () => void;
+  rest: RestTimer;
 };
 
 type Filter = "recent" | Muscle;
@@ -49,9 +62,11 @@ export function WorkoutScreen({
   removeSets,
   setPlace,
   addExercise,
+  removeExercise,
   onToast,
   resumeId,
   onResumed,
+  rest,
 }: Props) {
   const place = data.lastPlace;
   const [q, setQ] = useState("");
@@ -76,6 +91,7 @@ export function WorkoutScreen({
     [data.sets, data.weights, data.profile.weightKg, day],
   );
   const weekVol = weekBars.reduce((a, b) => a + b.value, 0);
+  const wk = weekStats(data.sets, weekIds(day));
 
   useEffect(() => {
     if (!resumeId) return;
@@ -89,7 +105,9 @@ export function WorkoutScreen({
     const text = q.trim();
     let list = inPlace;
     if (text) {
-      list = inPlace.filter((e) => e.name.includes(text) || MUSCLE_LABEL[e.muscle].includes(text));
+      list = inPlace.filter(
+        (e) => matchSearch(e.name, text) || matchSearch(MUSCLE_LABEL[e.muscle], text),
+      );
     } else if (filter === "recent") {
       const ids = recents.length ? recents : starters;
       const rank = new Map(ids.map((id, i) => [id, i]));
@@ -114,6 +132,23 @@ export function WorkoutScreen({
     onToast(`${ids.length}種目を今日の順に置いた`);
     const first = catalog.find((e) => e.id === ids[0]);
     if (first) setActive(first);
+  };
+
+  /** 定番メニューの日はこれ1回で終わる。きょう既に記録した種目は飛ばす。 */
+  const copyPrevAll = () => {
+    const prev = previousWorkoutDay(data, day);
+    if (!prev) return;
+    const doneToday = new Set(data.sets.filter((s) => s.day === day).map((s) => s.exerciseId));
+    const rows = data.sets
+      .filter((s) => s.day === prev && !doneToday.has(s.exerciseId))
+      .map(({ id: _id, at: _at, day: _day, ...rest }) => ({ ...rest, day, place }));
+    if (!rows.length) {
+      onToast("前回の種目はもう全部記録してある");
+      return;
+    }
+    const ids = logSets(rows);
+    buzz(16);
+    onToast(`前回のまま ${rows.length}セット記録`, () => removeSets(ids));
   };
 
   return (
@@ -149,24 +184,35 @@ export function WorkoutScreen({
       </div>
 
       {queue.length ? (
-        <div className="queue">
-          {queue.map((id) => {
-            const ex = catalog.find((e) => e.id === id);
-            if (!ex) return null;
-            const done = data.sets.some((s) => s.day === day && s.exerciseId === id);
-            return (
-              <button key={id} className={`chip ${done ? "on" : ""}`} onClick={() => setActive(ex)}>
-                {done ? "✓ " : ""}
-                {ex.name}
-              </button>
-            );
-          })}
-        </div>
+        <>
+          <div className="queue">
+            {queue.map((id) => {
+              const ex = catalog.find((e) => e.id === id);
+              if (!ex) return null;
+              const done = data.sets.some((s) => s.day === day && s.exerciseId === id);
+              return (
+                <button key={id} className={`chip ${done ? "on" : ""}`} onClick={() => setActive(ex)}>
+                  {done ? "✓ " : ""}
+                  {ex.name}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            className="copy-btn"
+            style={{ width: "100%", height: 40, marginBottom: 10 }}
+            onClick={copyPrevAll}
+          >
+            前回のまま全部記録
+          </button>
+        </>
       ) : null}
 
       <div className="section-h">
         <span>今週の負荷</span>
-        <span>{formatNum(weekVol)} kg · 自重は体重</span>
+        <span>
+          {wk.days}日 · {wk.sets}セット · {formatNum(weekVol)} kg
+        </span>
       </div>
       <WeekBars bars={weekBars} />
 
@@ -198,6 +244,7 @@ export function WorkoutScreen({
 
       {active ? (
         <SetSheet
+          key={active.id}
           exercise={active}
           data={data}
           day={day}
@@ -208,6 +255,21 @@ export function WorkoutScreen({
           removeSets={removeSets}
           onToast={onToast}
           onClose={() => setActive(null)}
+          onSwitch={(id) => {
+            const ex = catalog.find((e) => e.id === id);
+            if (ex) setActive(ex);
+          }}
+          onDelete={
+            active.id.startsWith("c-")
+              ? () => {
+                  const ex = active;
+                  removeExercise(ex.id);
+                  setActive(null);
+                  onToast(`${ex.name} を種目一覧から消した`, () => addExercise(ex));
+                }
+              : undefined
+          }
+          rest={rest}
         />
       ) : null}
 
@@ -262,6 +324,9 @@ function SetSheet({
   removeSets,
   onToast,
   onClose,
+  onSwitch,
+  onDelete,
+  rest,
 }: {
   exercise: Exercise;
   data: AppData;
@@ -273,6 +338,9 @@ function SetSheet({
   removeSets: Props["removeSets"];
   onToast: Props["onToast"];
   onClose: () => void;
+  onSwitch: (id: string) => void;
+  onDelete?: () => void;
+  rest: RestTimer;
 }) {
   const last = lastSetFor(data, exercise.id);
   const session = lastSession(data.sets, exercise.id, day);
@@ -282,23 +350,28 @@ function SetSheet({
   );
   const [reps, setReps] = useState(last?.reps ?? exercise.defaultReps ?? 10);
   const [minutes, setMinutes] = useState(last?.minutes ?? exercise.defaultMin ?? 15);
-  const [kcal, setKcal] = useState(last?.kcal ?? Math.round((exercise.defaultMin ?? 15) * 8));
+  const [kcal, setKcal] = useState(
+    last?.kcal ?? cardioKcal(exercise, exercise.defaultMin ?? 15),
+  );
   const [secs, setSecs] = useState(last?.secs ?? exercise.defaultSec ?? 45);
   const [pad, setPad] = useState<"weight" | "reps" | "min" | "kcal" | "sec" | null>(null);
   const [flash, setFlash] = useState(false);
-  const [rest, setRest] = useState(0);
+  const [restSec, setRestSec] = useState(() => defaultRestSec(exercise));
 
   const todaySets = data.sets.filter((s) => s.day === day && s.exerciseId === exercise.id);
   const lastCount = session.length ? Math.min(5, session.length) : 3;
 
-  useEffect(() => {
-    if (rest <= 0) return;
-    const t = window.setInterval(() => setRest((n) => n - 1), 1000);
-    return () => window.clearInterval(t);
-  }, [rest]);
-
   const bodyweight = exercise.kind === "strength" && exercise.increment === 0;
   const inc = bodyweight ? 0 : exercise.increment || 2.5;
+  const target = exercise.defaultReps ?? 10;
+  const cleared = session.length >= 2 && sessionCleared(session, target);
+  const nextReps = bodyweight ? nextBodyweightReps(session) : undefined;
+  const nextStepId = NEXT_STEP[exercise.id];
+  const nextStep = nextStepId ? allExercises(data).find((e) => e.id === nextStepId) : undefined;
+  const setRest = (sec: number) => {
+    if (sec > 0) rest.start(sec);
+    else rest.stop();
+  };
 
   const payload = (): Omit<WorkoutSet, "id" | "at"> => {
     const kind: ExKind = exercise.kind;
@@ -318,11 +391,13 @@ function SetSheet({
 
   const commitOne = () => {
     const id = logSet(payload());
-    void id;
     buzz(16);
     setFlash(true);
     window.setTimeout(() => setFlash(false), 280);
-    if (exercise.kind !== "cardio") setRest(90);
+    if (exercise.kind !== "cardio") setRest(restSec);
+    onToast(`${exercise.name} ${lastLabel({ ...payload(), id, at: Date.now() })}`, () =>
+      removeSet(id),
+    );
   };
 
   const commitCount = (n: number) => {
@@ -335,7 +410,7 @@ function SetSheet({
     buzz(16);
     setFlash(true);
     window.setTimeout(() => setFlash(false), 280);
-    if (add === 1 && exercise.kind !== "cardio") setRest(90);
+    if (add === 1 && exercise.kind !== "cardio") setRest(restSec);
     else setRest(0);
     onToast(
       `${exercise.name} ${n}セット`,
@@ -364,7 +439,7 @@ function SetSheet({
                 ? "自重 · 回数だけ記録"
                 : "初回 · 数字をタップして変更"}
         </div>
-        {session.length >= 2 && !bodyweight && sessionCleared(session, exercise.defaultReps ?? 10) ? (
+        {cleared && !bodyweight ? (
           <button
             className="copy-btn"
             style={{ width: "100%", height: 40, marginBottom: 10 }}
@@ -372,6 +447,18 @@ function SetSheet({
           >
             前回クリア · +{formatKg(inc)}kg
           </button>
+        ) : null}
+        {cleared && bodyweight && nextReps ? (
+          <div className="step2">
+            <button className="copy-btn" onClick={() => setReps(nextReps)}>
+              前回クリア · {nextReps}回に
+            </button>
+            {nextStep ? (
+              <button className="copy-btn" onClick={() => onSwitch(nextStep.id)}>
+                次の段階 · {nextStep.name}
+              </button>
+            ) : null}
+          </div>
         ) : null}
 
         {exercise.kind === "strength" ? (
@@ -425,7 +512,7 @@ function SetSheet({
                   className={minutes === n ? "on" : ""}
                   onClick={() => {
                     setMinutes(n);
-                    setKcal(n * 8);
+                    setKcal(cardioKcal(exercise, n));
                   }}
                 >
                   {n}分
@@ -433,11 +520,27 @@ function SetSheet({
               ))}
             </div>
             <div className="rep-row">
-              <button onClick={() => setMinutes((n) => Math.max(1, n - 1))}>−</button>
+              <button
+                onClick={() => {
+                  const n = Math.max(1, minutes - 1);
+                  setMinutes(n);
+                  setKcal(cardioKcal(exercise, n));
+                }}
+              >
+                −
+              </button>
               <button className="num" onClick={() => setPad("min")}>
                 {minutes} 分
               </button>
-              <button onClick={() => setMinutes((n) => n + 1)}>+</button>
+              <button
+                onClick={() => {
+                  const n = minutes + 1;
+                  setMinutes(n);
+                  setKcal(cardioKcal(exercise, n));
+                }}
+              >
+                +
+              </button>
             </div>
             <div className="bigval">
               <button className="val num" onClick={() => setPad("kcal")}>
@@ -445,7 +548,10 @@ function SetSheet({
               </button>
               <span className="u">kcal</span>
             </div>
-            <div className="prev">マシン表示があればタップして上書き · 未入力は目安 {minutes * 8}kcal</div>
+            <div className="prev">
+              マシン表示があればタップして上書き · 目安 {exercise.kcalPerMin ?? 8}kcal/分 ={" "}
+              {cardioKcal(exercise, minutes)}kcal
+            </div>
           </>
         ) : null}
 
@@ -472,7 +578,19 @@ function SetSheet({
           <>
             <div className="section-h" style={{ marginTop: 2 }}>
               <span>何セット？</span>
-              <span>きょう {todaySets.length}</span>
+              <span>
+                休憩{" "}
+                {[60, 90, 120].map((s) => (
+                  <button
+                    key={s}
+                    className={`rest-opt ${restSec === s ? "on" : ""}`}
+                    onClick={() => setRestSec(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+                秒 · きょう {todaySets.length}
+              </span>
             </div>
             <div className={`set-chips ${flash ? "flash" : ""}`}>
               {[1, 2, 3, 4, 5].map((n) => (
@@ -493,12 +611,6 @@ function SetSheet({
             記録
           </button>
         )}
-        {rest > 0 ? (
-          <div className="rest">
-            休憩 <b className="num">{Math.floor(rest / 60)}:{String(rest % 60).padStart(2, "0")}</b>
-          </div>
-        ) : null}
-
         <div className="setlist">
           {todaySets.map((s, i) => (
             <div className="setline" key={s.id}>
@@ -513,6 +625,11 @@ function SetSheet({
         <button className="ghost" style={{ width: "100%", marginTop: 8 }} onClick={onClose}>
           次の種目へ
         </button>
+        {onDelete ? (
+          <button className="ghost danger" style={{ width: "100%" }} onClick={onDelete}>
+            この自作種目を一覧から消す
+          </button>
+        ) : null}
       </div>
 
       {pad === "weight" ? (
