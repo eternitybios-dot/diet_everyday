@@ -4,10 +4,12 @@ import { TodayScreen } from "./components/TodayScreen";
 import { WorkoutScreen } from "./components/WorkoutScreen";
 import { dayId, guessSlot } from "./lib/format";
 import { useAppData } from "./lib/useAppData";
+import { useRestTimer } from "./lib/useRestTimer";
 import type { MealSlot, Tab, ToastAction } from "./types";
 
 export default function App() {
   const store = useAppData();
+  const rest = useRestTimer();
   const [tab, setTab] = useState<Tab>("today");
   const [day, setDay] = useState(dayId);
   const [slot, setSlot] = useState<MealSlot>(() => guessSlot());
@@ -41,6 +43,9 @@ export default function App() {
           updateMeal={store.updateMeal}
           logWeight={store.logWeight}
           updateProfile={store.updateProfile}
+          replaceData={store.replaceData}
+          markExported={store.markExported}
+          onToast={onToast}
           onResumeExercise={(id) => {
             setResumeId(id);
             setTab("work");
@@ -58,9 +63,11 @@ export default function App() {
           removeSets={store.removeSets}
           setPlace={store.setPlace}
           addExercise={store.addExercise}
+          removeExercise={store.removeExercise}
           onToast={onToast}
           resumeId={resumeId}
           onResumed={() => setResumeId(null)}
+          rest={rest}
         />
       ) : null}
       {tab === "meal" ? (
@@ -75,8 +82,20 @@ export default function App() {
           scaleMeal={store.scaleMeal}
           updateMeal={store.updateMeal}
           addFood={store.addFood}
+          removeFood={store.removeFood}
           onToast={onToast}
         />
+      ) : null}
+
+      {rest.remaining > 0 ? (
+        <button className={`rest-pill ${rest.remaining <= 5 ? "soon" : ""}`} onClick={rest.stop}>
+          <i style={{ width: `${(rest.remaining / Math.max(1, rest.total)) * 100}%` }} />
+          <span>休憩</span>
+          <b className="num">
+            {Math.floor(rest.remaining / 60)}:{String(rest.remaining % 60).padStart(2, "0")}
+          </b>
+          <em>×</em>
+        </button>
       ) : null}
 
       {toast ? (

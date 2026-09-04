@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { FOOD_CAT_LABEL, FOODS, QUICK_KCAL } from "../data/foods";
 import { intakeOn, macrosFromEnergy } from "../lib/calc";
-import { buzz, slotLabel, weekday, weekIds } from "../lib/format";
+import { buzz, matchSearch, slotLabel, weekday, weekIds } from "../lib/format";
 import { allFoods, recentFoods } from "../lib/store";
 import type { AppData, Food, MealLog, MealSlot, ToastAction } from "../types";
 import { WeekBars } from "./Charts";
@@ -20,10 +20,11 @@ type Props = {
   scaleMeal: (id: string, qty: number) => void;
   updateMeal: (id: string, patch: Partial<MealLog>) => void;
   addFood: (f: Food) => void;
+  removeFood: (id: string) => void;
   onToast: (msg: string, undo?: () => void, actions?: ToastAction[]) => void;
 };
 
-type Cat = "recent" | Food["cat"];
+type Cat = "recent" | "custom" | Food["cat"];
 
 const SLOTS: MealSlot[] = ["breakfast", "lunch", "dinner", "snack"];
 const CATS: Food["cat"][] = ["protein", "staple", "home", "konbini", "out", "drink", "snack"];
@@ -39,6 +40,7 @@ export function MealScreen({
   scaleMeal,
   updateMeal,
   addFood,
+  removeFood,
   onToast,
 }: Props) {
   const [q, setQ] = useState("");
@@ -55,7 +57,10 @@ export function MealScreen({
     const text = q.trim();
     if (text) {
       return catalog.filter(
-        (f) => f.name.includes(text) || f.serving.includes(text) || String(f.kcal).includes(text),
+        (f) =>
+          matchSearch(f.name, text) ||
+          matchSearch(f.serving, text) ||
+          String(f.kcal).includes(text),
       );
     }
     if (cat === "recent") {
@@ -64,8 +69,9 @@ export function MealScreen({
       const rest = FOODS.filter((f) => !seen.has(f.id)).slice(0, 10);
       return [...recents, ...rest];
     }
+    if (cat === "custom") return data.customFoods;
     return catalog.filter((f) => f.cat === cat);
-  }, [catalog, cat, q, recents]);
+  }, [catalog, cat, q, recents, data.customFoods]);
 
   const log = (
     name: string,
@@ -97,7 +103,7 @@ export function MealScreen({
     ]);
   };
 
-  const todayMeals = data.meals.filter((m) => m.day === day).sort((a, b) => b.at - a.at);
+  const todayMeals = data.meals.filter((m) => m.day === day);
   const editing = todayMeals.find((m) => m.id === editId) ?? null;
 
   return (
@@ -154,7 +160,7 @@ export function MealScreen({
 
       <div className="section-h">
         <span>カロリー直打ち</span>
-        <span>{quickP ? `P${quickP}gつき` : "Pなし"}</span>
+        <span>{quickP ? `P${quickP}gつき` : "Pなし"} · F/Cは推定</span>
       </div>
       <div className="chips">
         {[0, 15, 30].map((n) => (
@@ -195,24 +201,52 @@ export function MealScreen({
             {FOOD_CAT_LABEL[c]}
           </button>
         ))}
+        {data.customFoods.length ? (
+          <button className={`chip ${cat === "custom" ? "on" : ""}`} onClick={() => setCat("custom")}>
+            自作 {data.customFoods.length}
+          </button>
+        ) : null}
       </div>
 
       <div className="grid2">
-        {visible.map((f) => (
-          <button
-            key={f.id}
-            className="tile"
-            onClick={() => log(f.name, f.serving, f.kcal, f.protein, f.fat, f.carb, f.id)}
-          >
-            <b>{f.name}</b>
-            <span>
-              {f.serving} · <span className="kcal num">{f.kcal}kcal</span>
-              {f.protein ? ` P${Math.round(f.protein)}` : ""}
-            </span>
-          </button>
-        ))}
+        {visible.map((f) => {
+          const custom = f.id.startsWith("cf-");
+          const tile = (
+            <button
+              key={custom ? undefined : f.id}
+              className={`tile ${custom && cat === "custom" ? "tile-main" : ""}`}
+              onClick={() => log(f.name, f.serving, f.kcal, f.protein, f.fat, f.carb, f.id)}
+            >
+              <b>{f.name}</b>
+              <span>
+                {f.serving} · <span className="kcal num">{f.kcal}kcal</span>
+                {f.protein ? ` P${Math.round(f.protein)}` : ""}
+              </span>
+            </button>
+          );
+          if (!custom || cat !== "custom") return tile;
+          return (
+            <div key={f.id} className="tile-wrap">
+              {tile}
+              <button
+                className="x"
+                aria-label="自作食品を消す"
+                onClick={() => {
+                  removeFood(f.id);
+                  onToast(`${f.name} を一覧から消した`, () => addFood(f));
+                }}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
       </div>
-      {visible.length === 0 ? <div className="empty">見つからない。テンキーか名前つきで追加</div> : null}
+      {visible.length === 0 ? (
+        <div className="empty">
+          {cat === "custom" ? "自作はまだない。右上の名前つきで追加" : "見つからない。テンキーか名前つきで追加"}
+        </div>
+      ) : null}
 
       {pad ? (
         <Keypad
