@@ -11,6 +11,7 @@
   --orange: #ff8a3d;
   --red: #ff5c3a;
   --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
   --nav-h: calc(64px + var(--safe-b));
 }
 
@@ -71,10 +72,24 @@ input:focus {
   position: relative;
 }
 
+/* ホーム画面アプリでは中身がステータスバーの下まで伸びるので、
+   時計の裏を塗りつぶして、ヘッダーはその下から始める。 */
+.app::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-t);
+  background: var(--bg);
+  z-index: 30;
+  pointer-events: none;
+}
+
 .screen {
   flex: 1;
   overflow: auto;
-  padding: 14px 14px calc(var(--nav-h) + 16px);
+  padding: calc(14px + var(--safe-t)) 14px calc(var(--nav-h) + 16px);
 }
 
 .num {
@@ -728,7 +743,7 @@ input:focus {
   border-top: 1px solid var(--line);
   border-radius: 18px 18px 0 0;
   padding: 12px 14px calc(var(--nav-h) + 8px);
-  max-height: 88dvh;
+  max-height: calc(100dvh - var(--safe-t) - 24px);
   overflow: auto;
 }
 
