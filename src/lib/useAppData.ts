@@ -1,15 +1,31 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppData, Exercise, Food, MealLog, Place, Profile, WorkoutSet } from "../types";
 import { suggestTargets } from "./calc";
 import { uid } from "./format";
 import { ageFrom, loadData, saveData } from "./store";
+import { withWeight } from "./records";
 
 export function useAppData() {
-  const [data, setData] = useState<AppData>(() => loadData());
+  const [initial] = useState(loadData);
+  const [data, setData] = useState<AppData>(initial.data);
+  const [storageError, setStorageError] = useState(initial.error);
+  const canSave = useRef(!initial.error);
+  const lastSaved = useRef(initial.data);
+
+  const persist = useCallback((next: AppData) => {
+    if (!canSave.current) return;
+    try {
+      saveData(next);
+      lastSaved.current = next;
+      setStorageError(null);
+    } catch {
+      setStorageError("端末への保存に失敗しました。変更はこの画面にだけ残っています。閉じる前にデータを書き出してください。");
+    }
+  }, []);
 
   useEffect(() => {
-    saveData(data);
-  }, [data]);
+    if (data !== lastSaved.current) persist(data);
+  }, [data, persist]);
 
   const logSet = useCallback((set: Omit<WorkoutSet, "id" | "at">) => {
     const row: WorkoutSet = { ...set, id: uid(), at: Date.now() };
@@ -93,11 +109,7 @@ export function useAppData() {
   }, []);
 
   const logWeight = useCallback((day: string, kg: number) => {
-    setData((d) => ({
-      ...d,
-      profile: { ...d.profile, weightKg: kg },
-      weights: [...d.weights.filter((w) => w.day !== day), { day, kg }],
-    }));
+    setData((d) => withWeight(d, day, kg));
   }, []);
 
   const updateProfile = useCallback((p: Partial<Profile>) => {
@@ -143,6 +155,7 @@ export function useAppData() {
   }, []);
 
   const replaceData = useCallback((next: AppData) => {
+    canSave.current = true;
     setData(next);
   }, []);
 
@@ -152,6 +165,10 @@ export function useAppData() {
 
   return {
     data,
+    storageError,
+    recoveryRaw: initial.error ? initial.raw : null,
+    retrySave: () => persist(data),
+    canRetrySave: canSave.current,
     removeExercise,
     removeFood,
     replaceData,

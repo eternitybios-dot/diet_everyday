@@ -5,6 +5,7 @@ import { WorkoutScreen } from "./components/WorkoutScreen";
 import { dayId, guessSlot } from "./lib/format";
 import { useAppData } from "./lib/useAppData";
 import { useRestTimer } from "./lib/useRestTimer";
+import { downloadJson, exportJson } from "./lib/store";
 import type { MealSlot, Tab, ToastAction } from "./types";
 
 export default function App() {
@@ -31,6 +32,17 @@ export default function App() {
 
   return (
     <div className="app">
+      {store.storageError ? (
+        <aside className="storage-alert" role="alert">
+          <strong>記録の保存を確認してください</strong>
+          <p>{store.storageError}</p>
+          <div className="chips">
+            <button className="chip" onClick={() => exportJson(store.data)}>画面の記録を書き出す</button>
+            {store.recoveryRaw != null ? <button className="chip" onClick={() => downloadJson(store.recoveryRaw!, "tremeshi-recovery.json")}>元データを救出</button> : null}
+            {store.canRetrySave ? <button className="chip" onClick={store.retrySave}>保存を再試行</button> : null}
+          </div>
+        </aside>
+      ) : null}
       {tab === "today" ? (
         <TodayScreen
           data={store.data}
@@ -99,7 +111,7 @@ export default function App() {
       ) : null}
 
       {toast ? (
-        <div className="toast">
+        <div className="toast" role="status" aria-live="polite">
           <span>{toast.msg}</span>
           <span className="toast-acts">
             {toast.actions?.map((a) => (
@@ -127,14 +139,14 @@ export default function App() {
         </div>
       ) : null}
 
-      <nav className="nav">
-        <button className={tab === "today" ? "on" : ""} onClick={() => setTab("today")}>
+      <nav className="nav" aria-label="メインナビゲーション">
+        <button aria-current={tab === "today" ? "page" : undefined} className={tab === "today" ? "on" : ""} onClick={() => setTab("today")}>
           今日
         </button>
-        <button className={tab === "work" ? "on" : ""} onClick={() => setTab("work")}>
+        <button aria-current={tab === "work" ? "page" : undefined} className={tab === "work" ? "on" : ""} onClick={() => setTab("work")}>
           トレ
         </button>
-        <button className={tab === "meal" ? "on" : ""} onClick={() => setTab("meal")}>
+        <button aria-current={tab === "meal" ? "page" : undefined} className={tab === "meal" ? "on" : ""} onClick={() => setTab("meal")}>
           飯
         </button>
       </nav>

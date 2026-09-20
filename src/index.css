@@ -20,6 +20,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+:focus-visible { outline: 3px solid var(--lime); outline-offset: 3px; }
+.storage-alert { margin: calc(12px + var(--safe-t)) 16px 12px; padding: 16px; border: 1px solid var(--orange); border-radius: 16px; background: var(--card); }
+.storage-alert p, .import-confirm p { font-size: 14px; line-height: 1.7; }
+.import-confirm { padding: 16px; border: 1px solid var(--orange); border-radius: 16px; margin-bottom: 16px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
 html,
 body,
 #root {
