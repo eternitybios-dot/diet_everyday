@@ -340,6 +340,7 @@ export function TodayScreen({
           title="体重"
           unit="kg"
           initial={weight}
+          min={0.1}
           onDone={(n) => logWeight(day, n)}
           onClose={() => setWeightPad(false)}
         />
@@ -447,6 +448,7 @@ function Settings({
   onToast: (msg: string, undo?: () => void) => void;
 }) {
   const [pad, setPad] = useState<"kcal" | "p" | "w" | "h" | "start" | "birth" | null>(null);
+  const [pendingImport, setPendingImport] = useState<AppData | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const b = Math.round(bmr(profile));
   const s = suggestTargets(profile);
@@ -457,10 +459,7 @@ function Settings({
     if (!file) return;
     try {
       const next = await parseImport(file);
-      const before = data;
-      replaceData(next);
-      onToast(`${recordCount(next)}件を読み込んだ`, () => replaceData(before));
-      onClose();
+      setPendingImport(next);
     } catch (e) {
       onToast(e instanceof Error ? e.message : "読み込めなかった");
     }
@@ -598,9 +597,25 @@ function Settings({
           />
         </div>
         <p className="empty" style={{ paddingTop: 0 }}>
-          読み込むと今の記録は置き換わります（直後の「取消」で戻せる）。ホーム画面に追加していない
+          読み込む前に件数を確認できます。適用すると今の記録は置き換わります。まず現在の記録を書き出してください。ホーム画面に追加していない
           Safari は、しばらく開かないとデータを消すことがあります。
         </p>
+        {pendingImport ? (
+          <div className="import-confirm" role="group" aria-label="バックアップの読み込み確認">
+            <h3>このデータに置き換えますか？</h3>
+            <p>現在 {recordCount(data)}件 → 読み込み後 {recordCount(pendingImport)}件</p>
+            <p>トレ {pendingImport.sets.length}件・食事 {pendingImport.meals.length}件・体重 {pendingImport.weights.length}件</p>
+            <div className="step2">
+              <button className="copy-btn" onClick={() => setPendingImport(null)}>キャンセル</button>
+              <button className="copy-btn" onClick={() => {
+                const before = data;
+                replaceData(pendingImport);
+                onToast(`${recordCount(pendingImport)}件を読み込んだ`, () => replaceData(before));
+                onClose();
+              }}>確認して置き換える</button>
+            </div>
+          </div>
+        ) : null}
         <button className="go" onClick={onClose}>
           閉じる
         </button>
@@ -623,6 +638,7 @@ function Settings({
           title="目標kcal"
           unit="kcal"
           initial={profile.targetKcal}
+          min={1}
           allowDecimal={false}
           onDone={(n) => updateProfile({ targetKcal: Math.round(n) })}
           onClose={() => setPad(null)}
@@ -643,6 +659,7 @@ function Settings({
           title="体重"
           unit="kg"
           initial={profile.weightKg}
+          min={0.1}
           onDone={(n) => updateProfile({ weightKg: n })}
           onClose={() => setPad(null)}
         />
@@ -652,6 +669,7 @@ function Settings({
           title="開始体重"
           unit="kg"
           initial={profile.startWeightKg}
+          min={0.1}
           onDone={(n) => updateProfile({ startWeightKg: n })}
           onClose={() => setPad(null)}
         />
@@ -661,6 +679,7 @@ function Settings({
           title="身長"
           unit="cm"
           initial={profile.heightCm}
+          min={1}
           allowDecimal={false}
           onDone={(n) => updateProfile({ heightCm: Math.round(n) })}
           onClose={() => setPad(null)}

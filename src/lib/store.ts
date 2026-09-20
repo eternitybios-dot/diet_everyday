@@ -3,6 +3,7 @@ import { FOODS } from "../data/foods";
 import type { AppData, Exercise, Food, MealLog, Place, Profile, WorkoutSet } from "../types";
 import { macrosFromEnergy, suggestTargets } from "./calc";
 import { dayId } from "./format";
+import { validateBackup } from "./validation";
 
 const KEY = "tremeshi-v2";
 const OLD_KEY = "tremeshi-v1";
@@ -26,7 +27,7 @@ const empty = (): AppData => ({
   profile: { ...DEFAULT_PROFILE },
   sets: [],
   meals: [],
-  weights: [{ day: dayId(), kg: 72 }],
+  weights: [],
   customExercises: [],
   customFoods: [],
   lastPlace: "gym",
@@ -61,23 +62,29 @@ function migrate(raw: Partial<AppData>): AppData {
       targetCarb: profile.targetCarb ?? suggested.targetCarb,
     },
     sets: Array.isArray(raw.sets) ? raw.sets : [],
-    weights: Array.isArray(raw.weights) && raw.weights.length ? raw.weights : base.weights,
+    weights: Array.isArray(raw.weights) ? raw.weights : [],
     customExercises: Array.isArray(raw.customExercises) ? raw.customExercises : [],
     meals: (Array.isArray(raw.meals) ? raw.meals : []).map(migrateMeal),
     customFoods: (Array.isArray(raw.customFoods) ? raw.customFoods : []).map((f) => ({
       ...f,
-      ...("fat" in f && f.fat != null ? {} : macrosFromEnergy(f.kcal, f.protein)),
+      fat: f.fat ?? macrosFromEnergy(f.kcal, f.protein).fat,
+      carb: f.carb ?? macrosFromEnergy(f.kcal, f.protein).carb,
     })),
   };
 }
 
-export function loadData(): AppData {
+export type LoadResult = { data: AppData; error: string | null; raw: string | null };
+
+export function loadData(): LoadResult {
+  let raw: string | null = null;
   try {
-    const raw = localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY);
-    if (!raw) return empty();
-    return migrate(JSON.parse(raw) as Partial<AppData>);
+    raw = localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY);
+    if (raw == null) return { data: empty(), error: null, raw };
+    const parsed: unknown = JSON.parse(raw);
+    validateBackup(parsed);
+    return { data: migrate(parsed as Partial<AppData>), error: null, raw };
   } catch {
-    return empty();
+    return { data: empty(), raw, error: "保存済みの記録を読み込めませんでした。元のデータを保護するため自動保存を停止しています。バックアップを確認してから設定で読み込んでください。" };
   }
 }
 
@@ -86,23 +93,28 @@ export function saveData(data: AppData): void {
 }
 
 export function exportJson(data: AppData): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  downloadJson(JSON.stringify(data, null, 2), `tremeshi-${dayId()}.json`);
+}
+
+export function downloadJson(text: string, filename: string): void {
+  const blob = new Blob([text], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `tremeshi-${dayId()}.json`;
+  a.download = filename;
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  a.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 /** 書き出した JSON を読み戻す。形が違えば例外。 */
 export async function parseImport(file: File): Promise<AppData> {
+  if (file.size > 10 * 1024 * 1024) throw new Error("10MB以下のバックアップを選んでください");
   const text = await file.text();
-  const raw = JSON.parse(text) as Partial<AppData>;
-  if (!raw || typeof raw !== "object" || !raw.profile || !Array.isArray(raw.sets)) {
-    throw new Error("トレ飯の書き出しファイルではない");
-  }
-  return migrate(raw);
+  const raw: unknown = JSON.parse(text);
+  validateBackup(raw);
+  return migrate(raw as Partial<AppData>);
 }
 
 export function recordCount(data: AppData): number {

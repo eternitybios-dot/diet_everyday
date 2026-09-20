@@ -88,6 +88,7 @@ export function buzz(pattern: number | number[] = 12): void {
 /** ひらがな→カタカナに寄せて、大文字小文字と空白の差を無視する。 */
 export function normalizeSearch(s: string): string {
   return s
+    .normalize("NFKC")
     .trim()
     .toLowerCase()
     .replace(/[\u3041-\u3096]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 0x60))

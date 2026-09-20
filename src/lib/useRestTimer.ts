@@ -21,8 +21,15 @@ export function useRestTimer(): RestTimer {
 
   useEffect(() => {
     if (endAt == null) return;
-    const t = window.setInterval(() => setNow(Date.now()), 500);
-    return () => window.clearInterval(t);
+    const tick = () => setNow(Date.now());
+    const t = window.setInterval(tick, 500);
+    document.addEventListener("visibilitychange", tick);
+    window.addEventListener("focus", tick);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", tick);
+      window.removeEventListener("focus", tick);
+    };
   }, [endAt]);
 
   const remaining = endAt == null ? 0 : Math.max(0, Math.ceil((endAt - now) / 1000));
