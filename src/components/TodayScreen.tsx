@@ -33,6 +33,7 @@ import { allExercises, backupStale, exportJson, parseImport, recordCount } from 
 import type { AppData, Goal, MealLog, Profile, Sex, Tab, WorkoutSet } from "../types";
 import { Sparkline } from "./Charts";
 import { DayBar } from "./DayBar";
+import { BrandBanner } from "./BrandBanner";
 import { ExerciseArt } from "./ExercisePic";
 import { Keypad } from "./Keypad";
 import { MealEdit, MealRow } from "./MealEdit";
@@ -123,6 +124,7 @@ export function TodayScreen({
         </button>
       </div>
       <DayBar day={day} setDay={setDay} />
+      <BrandBanner variant="today" />
 
       {stale ? (
         <button className="notice" onClick={() => setSettings(true)}>
