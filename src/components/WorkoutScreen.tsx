@@ -30,6 +30,7 @@ import type { AppData, Exercise, ExKind, Muscle, Place, WorkoutSet } from "../ty
 import { ExerciseArt } from "./ExercisePic";
 import { WeekBars } from "./Charts";
 import { DayBar } from "./DayBar";
+import { BrandBanner } from "./BrandBanner";
 import { Keypad } from "./Keypad";
 import { useEffect, useMemo, useState } from "react";
 
@@ -160,6 +161,7 @@ export function WorkoutScreen({
         </button>
       </div>
       <DayBar day={day} setDay={setDay} />
+      <BrandBanner variant="work" />
 
       <div className="seg">
         <button className={place === "gym" ? "on" : ""} onClick={() => setPlace("gym")}>
