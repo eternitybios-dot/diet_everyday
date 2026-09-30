@@ -6,6 +6,7 @@ import { allFoods, recentFoods } from "../lib/store";
 import type { AppData, Food, MealLog, MealSlot, ToastAction } from "../types";
 import { WeekBars } from "./Charts";
 import { DayBar } from "./DayBar";
+import { BrandBanner } from "./BrandBanner";
 import { Keypad } from "./Keypad";
 import { MealEdit, MealRow } from "./MealEdit";
 
@@ -115,6 +116,7 @@ export function MealScreen({
         </button>
       </div>
       <DayBar day={day} setDay={setDay} />
+      <BrandBanner variant="meal" />
 
       <div className="section-h">
         <span>今週のkcal</span>
