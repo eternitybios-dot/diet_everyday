@@ -1481,60 +1481,13 @@ html,body,#root{
   z-index:1;
   display:block;
   flex:0 0 auto;
-  width:min(118px,34vw);
+  width:min(150px,38vw);
   height:auto;
-  margin:-8px -7px -9px 0;
+  margin:-12px -12px -14px 0;
   overflow:visible;
   filter:drop-shadow(0 6px 9px rgba(0,0,0,.24));
   animation:art-hover 4s ease-in-out infinite;
 }
-.art-orbit{fill:rgba(198,239,58,.075);}
-.art-orbit-line{fill:none;stroke:rgba(198,239,58,.23);stroke-width:1;}
-.art-sparkle{
-  fill:#f5d978;
-  transform-box:fill-box;
-  transform-origin:center;
-  animation:twinkle 2.2s ease-in-out infinite;
-}
-.art-sparkle--two{animation-delay:.9s;opacity:.72;}
-.food-shadow,.mascot-shadow{fill:rgba(0,0,0,.34);}
-.bowl-body{fill:#c6ef3a;}
-.bowl-rim{fill:#e1f58f;stroke:#c6ef3a;stroke-width:2;}
-.food-leaf{fill:#77ad50;}
-.food-egg{fill:#fff3dc;}
-.food-yolk{fill:#ffad4f;}
-.food-protein{fill:#f3bc7b;}
-.food-steam{
-  fill:none;
-  stroke:#eef0df;
-  stroke-width:2.2;
-  stroke-linecap:round;
-  opacity:.68;
-}
-.food-steam path{animation:steam-rise 2.5s ease-in-out infinite;}
-.food-steam .steam-two{animation-delay:.7s;}
-.mascot-body{fill:#c6ef3a;}
-.mascot-belly{fill:#e2f58b;opacity:.9;}
-.mascot-eye{fill:#17200d;transform-box:fill-box;transform-origin:center;animation:blink 4.8s ease-in-out infinite;}
-.mascot-smile{fill:none;stroke:#17200d;stroke-width:2;stroke-linecap:round;}
-.mascot-cheek{fill:#ff9b76;opacity:.86;}
-.mascot-arm,.mascot-leg{
-  fill:none;
-  stroke:#c6ef3a;
-  stroke-width:5;
-  stroke-linecap:round;
-}
-.mascot-arm{stroke-width:4.5;transform-box:view-box;transform-origin:116px 48px;animation:arms-flex 2.6s ease-in-out infinite;}
-.mascot-leg{stroke-width:4;}
-.barbell{
-  transform-box:view-box;
-  transform-origin:110px 28px;
-  animation:weight-lift 2.6s cubic-bezier(.45,0,.55,1) infinite;
-}
-.barbell-bar{fill:#eaf0d3;}
-.barbell-plate{fill:#ff8a3d;}
-.barbell-plate--inner{fill:#c6ef3a;}
-.food-bowl{transform-box:view-box;transform-origin:47px 82px;animation:bowl-bounce 3.8s ease-in-out infinite;}
 .remain,.loss-card,.trend,.summary,.weight-btn,.macro,.notice{
   box-shadow:0 8px 22px rgba(0,0,0,.18),inset 0 1px rgba(255,255,255,.035);
 }
@@ -1769,30 +1722,12 @@ input:focus{box-shadow:0 0 0 3px rgba(198,239,58,.11);}
   from{transform:translate(0,0) rotate(-5deg);}
   to{transform:translate(-8px,8px) rotate(7deg);}
 }
-@keyframes twinkle{
-  0%,100%{opacity:.4;transform:scale(.75) rotate(-10deg);}
-  50%{opacity:1;transform:scale(1.18) rotate(10deg);}
-}
-@keyframes steam-rise{
-  0%,100%{opacity:.15;transform:translateY(3px);}
-  50%{opacity:.8;transform:translateY(-5px);}
-}
-@keyframes blink{
-  0%,46%,50%,100%{transform:scaleY(1);}
-  48%{transform:scaleY(.08);}
-}
-@keyframes arms-flex{
-  0%,100%{transform:rotate(0);}
-  50%{transform:rotate(-4deg);}
-}
-@keyframes weight-lift{
-  0%,100%{transform:translateY(2px) rotate(0);}
-  50%{transform:translateY(-4px) rotate(-2deg);}
-}
-@keyframes bowl-bounce{
-  0%,100%{transform:rotate(0);}
-  50%{transform:rotate(-2deg) translateY(-1px);}
-}
+
+
+
+
+
+
 @keyframes remain-glow{
   from{transform:translate(-7px,8px) scale(.85);opacity:.5;}
   to{transform:translate(6px,-3px) scale(1.12);opacity:1;}
@@ -1837,7 +1772,7 @@ input:focus{box-shadow:0 0 0 3px rgba(198,239,58,.11);}
   .app{box-shadow:0 0 80px rgba(0,0,0,.35);}
 }
 @media (prefers-reduced-motion:reduce){
-  .brand-banner::before,.brand-art,.brand-art *,
+  .brand-banner::before,.brand-art,
   .remain::after,.bar>i::after,.quick2 button::after,
   .screen>*,.screen .grid2>*,.weekbars-track>span,.spark path:last-of-type{
     animation:none!important;
