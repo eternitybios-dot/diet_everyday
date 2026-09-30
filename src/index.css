@@ -1843,3 +1843,11 @@ input:focus{box-shadow:0 0 0 3px rgba(198,239,58,.11);}
     animation:none!important;
   }
 }
+
+
+/* Keep zero-value columns dim after their entrance animation. */
+@keyframes bar-rise{
+  from{transform:scaleY(.04);}
+  to{transform:scaleY(1);}
+}
+.backdrop{animation-delay:0s;}
